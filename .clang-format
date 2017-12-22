@@ -1,0 +1,241 @@
+# -*- mode: yaml -*-
+# vim: ft=yaml
+#
+# This file provides Yandex.Maps source code formatting rules
+# (https://wiki.yandex-team.ru/JandeksKarty/development/fordevelopers/codingstyle)
+# understandable by the clang-format
+# (http://clang.llvm.org/docs/ClangFormat.html)
+#
+# This configuration is valid only for clang-format version 3.5.
+#
+# Full option list can be found here
+# http://clang.llvm.org/docs/ClangFormatStyleOptions.html
+
+# Language, this format style is targeted at.
+#
+# Possible values:
+#
+# None       - Do not use.
+# Cpp        - Should be used for C, C++, ObjectiveC, ObjectiveC++.
+# JavaScript - Should be used for JavaScript.
+# Proto      - Should be used for Protocol Buffers
+#              (https://developers.google.com/protocol-buffers/).
+Language:        Cpp
+
+# The style used for all options not specifically set in the configuration.
+#
+# This option is supported only in the clang-format configuration
+# (both within -style='{...}' and the .clang-format file).
+#
+# Possible values:
+#
+# LLVM     - A style complying with the LLVM coding standards
+# Google   - A style complying with Google C++ style guide
+# Chromium - A style complying with Chromium style guide
+# Mozilla  - A style complying with Mozilla style guide
+# WebKit   - A style complying with WebKit style guide
+BasedOnStyle:  LLVM
+
+# Adds missing namespace end comments and fixes invalid existing ones.
+FixNamespaceComments: true
+
+# The extra indent or outdent of access modifiers, e.g. public:
+AccessModifierOffset: -4
+
+# The number of characters to use for indentation of constructor
+# initializer lists.
+ConstructorInitializerIndentWidth: 4
+
+# If true, aligns escaped newlines as far left as possible.
+# Otherwise puts them into the right-most column.
+AlignEscapedNewlinesLeft: false
+
+# If true, aligns trailing comments.
+AlignTrailingComments: true
+
+# Allow putting all parameters of a function declaration onto the
+# next line even if BinPackParameters is false.
+AllowAllParametersOfDeclarationOnNextLine: true
+
+# If true, int f() { return 0; } can be put on a single line.
+AllowShortIfStatementsOnASingleLine: false
+
+# If true, while (true) continue; can be put on a single line.
+AllowShortLoopsOnASingleLine: false
+
+# If true, int f() { return 0; } can be put on a single line.
+AllowShortFunctionsOnASingleLine: true
+
+# If true, always break after the template<...> of a template declaration.
+AlwaysBreakTemplateDeclarations: true
+
+# If true, always break before multiline string literals.
+AlwaysBreakBeforeMultilineStrings: false
+
+# If true, binary operators will be placed after line breaks.
+BreakBeforeBinaryOperators: true
+
+# If true, ternary operators will be placed after line breaks.
+BreakBeforeTernaryOperators: true
+
+# Always break constructor initializers before commas and align
+# the commas with the colon.
+BreakConstructorInitializersBeforeComma: true
+
+# If false, a function call or function definition parameters will either
+# all be on the same line or will have one line each.
+BinPackParameters: false
+
+# A column limit of 0 means that there is no column limit. In this case,
+# clang-format will respect the input line breaking decisions within
+# statements unless they contradict other rules.
+ColumnLimit: 78
+
+# If the constructor initializers dont fit on a line,
+# put each initializer on its own line.
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+
+# Indent case labels one level from the switch statement.
+IndentCaseLabels: false
+
+# The maximum number of consecutive empty lines to keep.
+MaxEmptyLinesToKeep: 1
+
+# The indentation used for namespaces.
+#
+# Possible values:
+#
+# None  - Dont indent in namespaces.
+# Inner - Indent only in inner namespaces (nested in other namespaces).
+# All   -  Indent in all namespaces.
+NamespaceIndentation: None
+
+# Set whether & and * bind to the type as opposed to the variable.
+PointerBindsToType: true
+
+# If true, analyze the formatted file for the most common binding and use
+# PointerBindsToType only as fallback.
+DerivePointerBinding: false
+
+# The number of spaces to before trailing line comments.
+SpacesBeforeTrailingComments: 1
+
+# If true, format braced lists as best suited for C++11 braced lists.
+#
+# Important differences:
+#   - No spaces inside the braced list.
+#   - No line break before the closing brace.
+#   - Indentation with the continuation indent, not with the block indent.
+#
+# Fundamentally, C++11 braced lists are formatted exactly like function
+# calls would be formatted in their place. If the braced list follows a name
+# (e.g. a type or variable name), clang-format formats as if the {} were the
+# parentheses of a function call with that name. If there is no name,
+# a zero-length name is assumed.
+Cpp11BracedListStyle: true
+
+# Format compatible with this standard, e.g. use A<A<int> > instead of
+# A<A<int>> for LS_Cpp03.
+#
+# Possible values:
+#
+# Cpp03 - Use C++03-compatible syntax.
+# Cpp11 - Use features of C++11 (e.g. A<A<int>> instead of A<A<int> >).
+# Auto  - Automatic detection based on the input.
+Standard:        Cpp11
+
+# The number of columns to use for indentation.
+IndentWidth:     4
+
+# The way to use tab characters in the resulting file.
+#
+# Possible values:
+#
+# Never          - Never use tab.
+# ForIndentation - Use tabs only for indentation.
+# Always         - Use tabs whenever we need to fill whitespace that spans
+#                  at least from one tab stop to the next one.
+UseTab:          Never
+
+# The brace breaking style to use.
+#
+# Possible values:
+#
+# Attach     - Always attach braces to surrounding context.
+# Linux      - Like Attach, but break before braces on function,
+#              namespace and class definitions.
+# Stroustrup - Like Attach, but break before function definitions.
+# Allman     - Always break before braces.
+# GNU        - Always break before braces and add an extra level of indentation
+#              to braces of control statements, not to those of class,
+#              function or other definitions.
+BreakBeforeBraces: Stroustrup
+
+# If true, indent when breaking function declarations which are not also
+# definitions after the type.
+IndentFunctionDeclarationAfterType: false
+
+# If true, spaces will be inserted after ( and before ).
+SpacesInParentheses: false
+
+# If true, spaces will be inserted after < and before >
+# in template argument lists.
+SpacesInAngles:  false
+
+# If true, spaces may be inserted into ().
+SpaceInEmptyParentheses: false
+
+# If true, spaces may be inserted into C style casts.
+SpacesInCStyleCastParentheses: false
+
+# If true, spaces are inserted inside container literals
+# (e.g. ObjC and Javascript array and dict literals).
+SpacesInContainerLiterals: true
+
+# If false, spaces will be removed before assignment operators.
+SpaceBeforeAssignmentOperators: true
+
+# Indent width for line continuations.
+ContinuationIndentWidth: 4
+
+# Defines in which cases to put a space before opening parentheses.
+#
+# Possible values:
+#
+# Never             - Never put a space before opening parentheses.
+# ControlStatements - Put a space before opening parentheses only after
+#                     control statement keywords (for/if/while...).
+# Always            - Always put a space before opening parentheses, except
+#                     when it prohibited by the syntax rules (in function-like
+#                     macro definitions) or when determined by other style rules
+#                     (after unary operators, opening parentheses, etc.)
+SpaceBeforeParens: ControlStatements
+
+# The penalty for breaking a function call after call(.
+PenaltyBreakBeforeFirstCallParameter: 19
+
+# The penalty for each line break introduced inside a comment.
+PenaltyBreakComment: 300
+
+# The penalty for each line break introduced inside a string literal.
+PenaltyBreakString: 1000
+
+# The penalty for breaking before the first <<.
+PenaltyBreakFirstLessLess: 120
+
+# The penalty for each character outside of the column limit.
+PenaltyExcessCharacter: 1000000
+
+# Penalty for putting the return type of a function onto its own line.
+PenaltyReturnTypeOnItsOwnLine: 50
+
+# If true, clang-format will attempt to re-flow comments.
+ReflowComments: true
+
+ExperimentalAutoDetectBinPacking: true
+
+---
+Language: JavaScript
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 0
