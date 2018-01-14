@@ -234,8 +234,3 @@ ReflowComments: true
 
 ExperimentalAutoDetectBinPacking: true
 
----
-Language: JavaScript
-BasedOnStyle: Google
-IndentWidth: 4
-ColumnLimit: 0
