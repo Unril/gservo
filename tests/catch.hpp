@@ -1412,7 +1412,7 @@ namespace Catch {
     handler.reactWithDebugBreak();
 
 ///////////////////////////////////////////////////////////////////////////////
-// Another way to speed-up compilation is to omit local try-catch for REQUIRE*
+// Another way to convSpeed-up compilation is to omit local try-catch for REQUIRE*
 // macros.
 // This can potentially cause false negative, if the test code catches
 // the exception before it propagates back up to the runner.

@@ -16,6 +16,7 @@
       <option name="SPACE_AFTER_REFERENCE_IN_DECLARATION" value="true" />
       <option name="FIELDS_SUFFIX" value="_" />
       <option name="GETTERS_PREFIX" value="" />
+      <option name="GENERATE_OPERATORS_AS_MEMBERS" value="false" />
     </Objective-C>
     <Objective-C-extensions>
       <file>

@@ -17,7 +17,7 @@ x%.2f                    | x axis only movement
 $100=1                   | set ratio x
 $101=1                   | set ratio y
 $110=1                   | set speed deg/s x
-$111=1                   | set speed deg/s y
+$111=1                   | set convSpeed deg/s y
 $120=1                   | set acceleration deg/s^2 x
 $121=1                   | set acceleration deg/s^2 y
 $140=0                   | set zero position deg x
@@ -34,6 +34,11 @@ $$                       | show setting
 constexpr int COORDS = 2;
 
 constexpr char coordNames[COORDS]{'x', 'y'};
+
+template<typename T>
+inline T clamp(T val, T minV, T maxV) {
+    return val > maxV ? maxV : val < minV ? minV : val;
+}
 
 template<typename T>
 struct Vec {
@@ -117,11 +122,17 @@ struct Vec {
 
     inline friend Vec operator+(Vec a, const Vec& b) { return a += b; }
 
-    inline friend Vec operator+(T a, const Vec& b) {
-        return Vec::c(a) += b;
-    }
+    inline friend Vec operator+(T a, const Vec& b) { return Vec::c(a) += b; }
 
     inline friend Vec operator+(Vec a, T b) { return a += Vec::c(b); }
+
+    Vec operator-() const {
+        Vec v{};
+        for (int i = 0; i < COORDS; ++i) {
+            v[i] = -coord[i];
+        }
+        return v;
+    }
 
     Vec& operator-=(const Vec& v) {
         for (int i = 0; i < COORDS; ++i) {
@@ -132,9 +143,7 @@ struct Vec {
 
     inline friend Vec operator-(Vec a, const Vec& b) { return a -= b; }
 
-    inline friend Vec operator-(T a, const Vec& b) {
-        return Vec::c(a) -= b;
-    }
+    inline friend Vec operator-(T a, const Vec& b) { return Vec::c(a) -= b; }
 
     inline friend Vec operator-(Vec a, T b) { return a -= Vec::c(b); }
 
@@ -147,9 +156,7 @@ struct Vec {
 
     inline friend Vec operator*(Vec a, const Vec& b) { return a *= b; }
 
-    inline friend Vec operator*(T a, const Vec& b) {
-        return Vec::c(a) *= b;
-    }
+    inline friend Vec operator*(T a, const Vec& b) { return Vec::c(a) *= b; }
 
     inline friend Vec operator*(Vec a, T b) { return a *= Vec::c(b); }
 
@@ -162,12 +169,31 @@ struct Vec {
 
     inline friend Vec operator/(Vec a, const Vec& b) { return a /= b; }
 
-    inline friend Vec operator/(T a, const Vec& b) {
-        return Vec::c(a) /= b;
-    }
+    inline friend Vec operator/(T a, const Vec& b) { return Vec::c(a) /= b; }
 
     inline friend Vec operator/(Vec a, T b) { return a /= Vec::c(b); }
+
+    friend bool operator==(const Vec& lhs, const Vec& rhs) {
+        for (int i = 0; i < COORDS; ++i) {
+            if (lhs[i] != rhs[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    friend bool operator!=(const Vec& lhs, const Vec& rhs) {
+        return !(rhs == lhs);
+    }
 };
+
+template<typename T>
+Vec<T> clampEach(Vec<T> val, const Vec<T>& vMin, const Vec<T>& vMax) {
+    for (int i = 0; i < COORDS; ++i) {
+        val[i] = clamp(val[i], vMin[i], vMax[i]);
+    }
+    return val;
+}
 
 using FVec = Vec<float>;
 using IVec = Vec<int>;
@@ -177,8 +203,8 @@ enum class Mode : unsigned {
 };
 
 enum class Setting : unsigned {
-    RatioX = 100, RatioY = 101, SpeedX = 110, SpeedY = 111, AccelX = 120,
-    AccelY = 121, ZeroX = 140, ZeroY = 141, RetentionX = 150, RetentionY = 151,
+    SpeedX = 110, SpeedY = 111, AccelX = 120,
+    AccelY = 121, ZeroX = 140, ZeroY = 141
 };
 
 inline int operator-(Setting a, Setting b) { return (int) a - (int) b; }
@@ -292,7 +318,7 @@ private:
         bool hasSpeed = false;
         if (checkSpeed()) {
             if (!parseSpeed(speed)) {
-                cb_->error("expect speed");
+                cb_->error("expect convSpeed");
                 return false;
             }
             hasSpeed = true;
@@ -304,7 +330,7 @@ private:
         }
         if (!hasSpeed && checkSpeed()) {
             if (!parseSpeed(speed)) {
-                cb_->error("expect speed");
+                cb_->error("expect convSpeed");
                 return false;
             }
             hasSpeed = true;

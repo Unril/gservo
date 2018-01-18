@@ -31,7 +31,7 @@ public:
         ss_ << "g " << static_cast<int>(g) << ";";
     }
 
-    void setSpeed(float val) override { ss_ << "speed " << val << ";"; }
+    void setSpeed(float val) override { ss_ << "convSpeed " << val << ";"; }
 
     void move(const FVec& p, bool report) override
     {
@@ -42,7 +42,7 @@ public:
         ss_ << report << ";";
     }
 
-    void reportCurrentPos() override { ss_ << "curr pos;"; }
+    void reportCurrentPos() override { ss_ << "curr convPos;"; }
 
     void setSetting(Setting s, float val, bool hasVal) override
     {
@@ -74,7 +74,7 @@ TEST_CASE("Parser")
     CHECK_THAT(parse("%%\n"), Equals("help;eol;"));
     CHECK_THAT(parse("%0 123\n"), Equals("servoId 123;eol;"));
     CHECK_THAT(parse("\n"), Equals("eol;"));
-    CHECK_THAT(parse("?\n"), Equals("curr pos;eol;"));
+    CHECK_THAT(parse("?\n"), Equals("curr convPos;eol;"));
     CHECK_THAT(parse("$$\n"), Equals("s show;eol;"));
     CHECK_THAT(parse("$h\n"), Equals("homing;eol;"));
     CHECK_THAT(parse("$110=\n"), Equals("s 110, 0, false;eol;"));
@@ -95,17 +95,17 @@ TEST_CASE("Parser")
                Equals("move nan, false, 10, true, true;eol;"));
     CHECK_THAT(parse("g0\n"), Equals("g 0;eol;"));
     CHECK_THAT(parse("g1\n"), Equals("g 1;eol;"));
-    CHECK_THAT(parse("g1 f10\n"), Equals("g 1;speed 10;eol;"));
+    CHECK_THAT(parse("g1 f10\n"), Equals("g 1;convSpeed 10;eol;"));
     CHECK_THAT(parse("g0 x0 y0 m2\n"),
                Equals("g 0;move 0, true, 0, true, true;eol;"));
     CHECK_THAT(parse("g1 x0 y0 f1000 m2\n"),
-               Equals("g 1;speed 1000;move 0, true, 0, true, true;eol;"));
+               Equals("g 1;convSpeed 1000;move 0, true, 0, true, true;eol;"));
     CHECK_THAT(parse("g1 x0 f1000\n"
                      "g1y20f10\n"
                      "g1 x 100 y 200 f 1 m2\n"),
-               Equals("g 1;speed 1000;move 0, true, nan, false, false;eol;"
-                      "g 1;speed 10;move nan, false, 20, true, false;eol;"
-                      "g 1;speed 1;move 100, true, 200, true, true;eol;"));
+               Equals("g 1;convSpeed 1000;move 0, true, nan, false, false;eol;"
+                      "g 1;convSpeed 10;move nan, false, 20, true, false;eol;"
+                      "g 1;convSpeed 1;move 100, true, 200, true, true;eol;"));
 }
 } // namespace tests
 } // namespace gservo

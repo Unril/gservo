@@ -107,11 +107,6 @@ inline const char* statusMsg(DynamixelStatus s) {
     return "unknown error";
 }
 
-template<typename T>
-inline T clamp(T val, T minV, T maxV) {
-    return val > maxV ? maxV : val < minV ? minV : val;
-}
-
 namespace MotorsConst {
 constexpr float unitRpm = 0.111f;
 constexpr float unitDegPerSec = unitRpm * 360.f / 60.f;
@@ -119,6 +114,9 @@ constexpr float unitDegPerSecInv = 1.f / unitDegPerSec;
 
 constexpr float unitDeg = 300.f / 1023.f;
 constexpr float unitDegInv = 1.f / unitDeg;
+
+constexpr int16_t maxPos = 1023;
+constexpr int16_t maxSpeed = 1023;
 }
 
 class Motors {
@@ -146,44 +144,53 @@ public:
         }
     }
 
-    void loop(unsigned long dtMicros) {
-        auto currPos = motorCurrentPos();
-
-        currPos_ = currPos;
+    void loop(float dtSec) {
+        currPos_ = motorCurrentPos();
     }
 
-    void move(const FVec& goal, const FVec& speed, const FVec& acc) {}
+    void move(const FVec& goal, const FVec& speed, const FVec& acc) {
+        const auto mSpeed = clampEach(convSpeed(speed), MVec::c(0),
+                                      MVec::c(MotorsConst::maxSpeed));
+        goalPos_ = clampEach(convPos(goal), MVec::c(0),
+                             MVec::c(MotorsConst::maxPos));
+        setMotorSpeed(mSpeed);
+        setMotorGoalPos(goalPos_);
+    }
 
-    FVec current() const { return {}; }
+    bool isMoving() const { return goalPos_ != currPos_; }
+
+    FVec currentPos() {
+        return convPos(motorCurrentPos());
+    }
 
     DynamixelStatus broadcastChangeId(DynamixelID id) {
         return di_->write(BROADCAST_ID, 3, id);
     }
 
-private:
-    FVec speed(const MVec& speed) {
-        return speed.cast<float>() * MotorsConst::unitDegPerSec;
-    }
-
-    FVec pos(const MVec& pos) {
-        return pos.cast<float>() * MotorsConst::unitDeg;
-    }
-
-    MVec speed(const FVec& speed) {
-        return (speed * MotorsConst::unitDegPerSecInv).cast<int16_t>();
-    }
-
-    MVec pos(const FVec& pos) {
-        return (pos * MotorsConst::unitDegInv).cast<int16_t>();
-    }
-
-    DynamixelStatus checkMotorsStatus() {
+    DynamixelStatus status() {
         for (auto m : motor_) {
             if (auto s = m->status()) {
                 return s;
             }
         }
         return DYN_STATUS_OK;
+    }
+
+private:
+    FVec convSpeed(const MVec& speed) {
+        return speed.cast<float>() * MotorsConst::unitDegPerSec;
+    }
+
+    FVec convPos(const MVec& pos) {
+        return pos.cast<float>() * MotorsConst::unitDeg;
+    }
+
+    MVec convSpeed(const FVec& speed) {
+        return (speed * MotorsConst::unitDegPerSecInv).cast<int16_t>();
+    }
+
+    MVec convPos(const FVec& pos) {
+        return (pos * MotorsConst::unitDegInv).cast<int16_t>();
     }
 
     void setMotorGoalPos(const MVec& pos) {
@@ -223,20 +230,14 @@ private:
     DynamixelInterface* di_{};
     DynamixelMotor* motor_[COORDS]{};
     MVec currPos_{};
-    MVec currSpeed_{};
-    MVec currAcc_{};
     MVec goalPos_{};
-    MVec maxSpeed_{};
-    MVec maxAcc_{};
 };
 
 class CallbacksImpl final : public Callbacks {
     struct Set {
-        float zero_[COORDS]{};
-        float ratio_[COORDS]{};
-        float speed_[COORDS]{};
-        float accel_[COORDS]{};
-        float retention_[COORDS]{};
+        FVec zero_{};
+        FVec speed_{};
+        FVec accel_{};
     };
 
 public:
@@ -245,48 +246,26 @@ public:
     void begin() {
         EEPROM.get(0, set_);
         for (int i = 0; i < COORDS; ++i) {
-            defSet_.ratio_[i] = 1;
             defSet_.speed_[i] = 1;
             defSet_.accel_[i] = 1;
-            defSet_.retention_[i] = 0;
             defSet_.zero_[i] = 0;
         }
         if (isnan(set_.zero_[0])) {
             set_ = defSet_;
         }
-        for (int i = 0; i < COORDS; ++i) {
-            auto* m = motor_[i];
-            m->jointMode();
-            m->enableTorque(set_.retention_[i] > 0);
-            constexpr uint8_t zero = 0;
-            m->write(26, zero);
-            m->write(27, zero);
-            m->write(28, zero);
-            m->write(29, zero);
-            m->write(48, zero);
-            m->write(49, zero);
-        }
     }
 
-    void loop() {
-        const bool anyWereMoving = isAnyMoving();
-        for (int i = 0; i < COORDS; ++i) {
-            if (moving_[i]) {
-                const auto currPos = motor_[i]->currentPosition();
-                moving_[i] = currPos != goalPos_[i];
-            }
-        }
-        if (anyWereMoving) {
-            if (!isAnyMoving()) {
+    void loop(float dtSec) {
+        bool wereMoving = motors_->isMoving();
+        motors_->loop(dtSec);
+        if (wereMoving) {
+            if (!motors_->isMoving()) {
                 stopped();
             }
         }
     }
 
     void stopped() {
-        for (int i = 0; i < COORDS; ++i) {
-            goalPos_[i] = motor_[i]->currentPosition();
-        }
         if (report_) {
             reportCurrentPos();
             report_ = false;
@@ -295,48 +274,35 @@ public:
 
     void eol() override {}
 
-    void homing() override { move({{0, 0}, {true, true}, true}, false); }
+    void homing() override { move(FVec::c(0), true); }
 
     void setMode(Mode g) override { fast_ = g == Mode::Fast; }
 
     void setSpeed(float val) override { speedOverride_ = val; }
 
-    void move(const Vec& pos, bool report) override {
+    void move(const FVec& pos, bool report) override {
+        report_ = report;
+        auto goal = motors_->currentPos();
         for (int i = 0; i < COORDS; ++i) {
-            if (pos.has[i]) {
-                auto coord = pos.coord[i];
-                if (set_.ratio_[i] != 0) {
-                    coord *= set_.ratio_[i];
-                }
-                coord += set_.zero_[i];
-                goalPos_[i] = toDynPos(coord);
+            if (pos.has(i)) {
+                goal[i] = pos[i] + set_.zero_[i];
             }
         }
-        report_ = pos.report;
-        for (int i = 0; i < COORDS; ++i) {
-            auto* m = motor_[i];
-            if (!fast_ && speedOverride_ > 0) {
-                m->speed(toDynSpeed(speedOverride_));
-            } else {
-                m->speed(toDynSpeed(set_.speed_[i]));
-            }
-            m->enableTorque(set_.retention_[i] > 0);
-            m->goalPosition(goalPos_[i]);
-            moving_[i] = true;
+        auto speed = set_.speed_;
+        if (!fast_ && speedOverride_ > 0) {
+            speed = FVec::c(speedOverride_);
         }
-        checkStatus();
+        motors_->move(goal, speed, set_.accel_);
     }
 
     void reportCurrentPos() override {
+        const auto pos = motors_->currentPos() - set_.zero_;
+        s_->print("MPos:");
         for (int i = 0; i < COORDS; ++i) {
-            const auto pos = motor_[i]->currentPosition();
-            auto coord = fromDynPos(pos);
-            coord -= set_.zero_[i];
-            coord /= set_.ratio_[i];
-            s_->print(coord);
-            s_->print(" ");
+            s_->print(pos[i]);
+            s_->print(",");
         }
-        s_->print("\n");
+        s_->print("0\n");
     }
 
     void setSetting(Setting s, float val, bool hasVal) override {
@@ -348,11 +314,9 @@ public:
         break;
         const auto old = set_;
         switch (s) {
-            GSERVO_SET_SETTING(ratio_, Ratio);
             GSERVO_SET_SETTING(speed_, Speed);
             GSERVO_SET_SETTING(accel_, Accel);
             GSERVO_SET_SETTING(zero_, Zero);
-            GSERVO_SET_SETTING(retention_, Retention);
             default:s_->print("unexpected setting\n");
                 return;
         }
@@ -368,11 +332,9 @@ public:
     for (int i = 0; i < COORDS; ++i) {                                       \
         printSetting(Setting::name##X + i, set_.field[i], #name);            \
     }
-        GSERVO_PRINT_SETTING(ratio_, Ratio);
         GSERVO_PRINT_SETTING(speed_, Speed);
         GSERVO_PRINT_SETTING(accel_, Accel);
         GSERVO_PRINT_SETTING(zero_, Zero);
-        GSERVO_PRINT_SETTING(retention_, Retention);
 #undef GSERVO_PRINT_SETTING
     }
 
@@ -398,33 +360,20 @@ g0 x%.2f M2              | x axis only movement and report position after move
 x%.2f                    | x axis only movement
 ?                        | ask current position
 
-$100=1                   | set ratio x
-$101=1                   | set ratio y
 $110=1                   | set speed deg/s x
-$111=1                   | set speed deg/s y
+$111=1                   | set convSpeed deg/s y
 $120=1                   | set acceleration deg/s^2 x
 $121=1                   | set acceleration deg/s^2 y
 $140=0                   | set zero position deg x
 $141=0                   | set zero position deg y
-$150=0                   | set retention on/off x
-$151=0                   | set retention on/off y
 $$                       | show setting
 
 %0 id                    | set servo id
-%1 name                  | set bluetooth name
 %%                       | show help)";
         s_->print(msg);
     }
 
 private:
-    bool isAnyMoving() const {
-        bool anyMoving = false;
-        for (bool i : moving_) {
-            anyMoving = anyMoving || i;
-        }
-        return anyMoving;
-    }
-
     void printSetting(Setting s, float val, const char* name) {
         s_->print("$");
         s_->print((int) s);
@@ -435,44 +384,9 @@ private:
         s_->print(")\n");
     }
 
-    static constexpr float UNIT_PER_DEG = 1024.0f / 300.0f;
-    static constexpr float DEG_PER_UNIT = 1.f / UNIT_PER_DEG;
-
-    uint16_t toDynPos(float coordDeg) {
-        if (coordDeg <= 0) {
-            return 0;
-        }
-        if (coordDeg >= 300) {
-            return 1023;
-        }
-        return static_cast<uint16_t>(coordDeg * UNIT_PER_DEG);
-    }
-
-    float fromDynPos(uint16_t pos) {
-        if (pos == 0) {
-            return 0;
-        }
-        if (pos == 1023) {
-            return 300;
-        }
-        return pos * DEG_PER_UNIT;
-    }
-
-    uint16_t toDynSpeed(float speedNormalized) {
-        if (speedNormalized <= 0) {
-            return 0;
-        }
-        if (speedNormalized >= 1) {
-            return 1023;
-        }
-        return static_cast<uint16_t>(speedNormalized * 1024.f);
-    }
-
     Print* s_;
     Motors* motors_;
     Set set_{}, defSet_;
-    uint16_t goalPos_[COORDS]{};
-    bool moving_[COORDS]{};
     bool report_{};
     float speedOverride_{};
     bool fast_{};
