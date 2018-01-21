@@ -1,12 +1,13 @@
 <component name="ProjectCodeStyleConfiguration">
   <code_scheme name="Project" version="173">
-    <option name="RIGHT_MARGIN" value="80" />
-    <option name="SOFT_MARGINS" value="80" />
+    <option name="RIGHT_MARGIN" value="100" />
+    <option name="SOFT_MARGINS" value="100" />
     <Objective-C>
       <option name="INDENT_NAMESPACE_MEMBERS" value="0" />
       <option name="KEEP_STRUCTURES_IN_ONE_LINE" value="true" />
       <option name="KEEP_CASE_EXPRESSIONS_IN_ONE_LINE" value="true" />
       <option name="KEEP_NESTED_NAMESPACES_IN_ONE_LINE" value="true" />
+      <option name="FUNCTION_BRACE_PLACEMENT" value="5" />
       <option name="FUNCTION_PARAMETERS_ALIGN_MULTILINE_PARS" value="true" />
       <option name="FUNCTION_CALL_ARGUMENTS_ALIGN_MULTILINE_PARS" value="true" />
       <option name="TEMPLATE_CALL_ARGUMENTS_ALIGN_MULTILINE" value="true" />

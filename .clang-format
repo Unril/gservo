@@ -89,7 +89,7 @@ BinPackParameters: false
 # A column limit of 0 means that there is no column limit. In this case,
 # clang-format will respect the input line breaking decisions within
 # statements unless they contradict other rules.
-ColumnLimit: 78
+ColumnLimit: 100
 
 # If the constructor initializers dont fit on a line,
 # put each initializer on its own line.

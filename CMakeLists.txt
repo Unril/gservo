@@ -4,6 +4,7 @@ project(gservo)
 set(CMAKE_CXX_STANDARD 11)
 
 include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}
         C:/Users/unril/Documents/Arduino/libraries/ardyno/src
         C:/Users/unril/AppData/Local/Arduino15/packages/arduino/hardware/avr/1.6.20/cores/arduino
         C:/Users/unril/AppData/Local/Arduino15/packages/arduino/hardware/avr/1.6.20/variants/mega
