@@ -33,6 +33,7 @@ struct Set {
     FVec d_;
     FVec punch_;
     FVec torque_;
+	float dirInvert_;
 };
 
 Set defSettings();
@@ -43,6 +44,7 @@ struct Reg {
         int it = 0;
         const auto add = [&](unsigned s, float* f) { items[it++] = Item{s, f}; };
         add(27, &set->homingPullOff_);
+		add(3, &set->dirInvert_);
         for (unsigned i = 0; i < COORDS; ++i) {
             add(110 + i, &set->speed_[i]);
             add(120 + i, &set->accel_[i]);
@@ -166,7 +168,7 @@ constexpr float unitDegInv = 1.f / unitDeg;
 constexpr float unitDegPerSec2 = 8.583f;
 constexpr float unitDegPerSec2Inv = 1.f / unitDegPerSec2;
 
-constexpr int16_t maxPos = 4095;
+constexpr int16_t maxPos = 0xFFF;
 constexpr int16_t maxSpeed = 1023;
 constexpr float maxSpeedDegPerSec = maxSpeed * unitDegPerMin;
 constexpr int16_t maxAcc = 254;
@@ -199,7 +201,7 @@ public:
         s_ = DYN_STATUS_OK;
         for (auto m : motor_) {
             s_ |= m->init();
-            m->jointMode(0, MotorsConst::maxPos);
+            m->jointMode(MotorsConst::maxPos, MotorsConst::maxPos);
         }
     }
 
@@ -284,11 +286,11 @@ public:
         s_ = di_->write(id, DYN_ADDRESS_BAUDRATE, baud);
     }
 
-    uint16_t read(uint8_t addr, DynamixelID id)
+    void alarmShutdown(DynamixelID id)
     {
-        uint16_t val{0xFFFF};
-        s_ = di_->read(id, addr, val);
-        return val;
+		const uint8_t val = 0;
+        s_ = di_->write(id, 0X11, val);        
+        s_ |= di_->write(id, 0X12, val);
     }
 
     GStr status()
@@ -454,10 +456,14 @@ public:
     void move(const FVec& pos, bool report) override
     {
         report_ = report;
+		unsigned invert = static_cast<unsigned>(set_.dirInvert_);		
         auto goal = motors_->currentPos();
         for (int i = 0; i < COORDS; ++i) {
             if (pos.has(i)) {
-                goal[i] = pos[i] + set_.zero_[i];
+				goal[i] = pos[i] + set_.zero_[i];
+				if((1u << i) & invert) {
+					goal[i] = -goal[i];					
+				}
             }
         }
         auto speed = set_.speed_;
@@ -469,7 +475,14 @@ public:
 
     void reportCurrentPos() override
     {
-        const auto pos = motors_->currentPos() - set_.zero_;
+		unsigned invert = static_cast<unsigned>(set_.dirInvert_);
+		auto mpos = motors_->currentPos();
+		for (int i = 0; i < COORDS; ++i) { 
+			if((1u << i) & invert) { 
+				mpos[i] = -mpos[i];
+			}
+		}
+        const auto pos = mpos - set_.zero_;
         s_->print("MPos:");
         for (int i = 0; i < COORDS; ++i) {
             s_->print(pos[i]);
@@ -527,17 +540,18 @@ public:
 $H                       | homing to zero position
 g0 x%.2f y%.2f           | generic movement
 g1 x%.2f y%.2f f%.2f     | generic movement with given speed
-g0 x%.2f M2              | x axis only movement and report position after move
+g0 x%.2f m2              | x axis only movement and report position after move
 x%.2f                    | x axis only movement
 ?                        | ask current position
 
 %0 id newId              | set servo id use id=254 to broadcast
 %1 id bool               | turn servo led to 1=on, 0=off
-%2 id val                | generic read
+%2 id                    | alarm shutdown
 %%                       | show help
 
 $$                       | show setting
 $1=255                   | set enable both axis then set to 255
+$3=0                     | direction invert mask, 1 - only x, 2 - only y, 3 - both
 $27=0                    | homing pull off, deg
 $110=0                   | set speed deg/min x, zero is full speed
 $111=0                   | set speed deg/min y, zero is full speed
@@ -563,26 +577,22 @@ $251=1                   | set enable y, 1 or 0
 
     void servoId(unsigned cmd, int id, int val) override
     {
-        const auto id1 = static_cast<DynamixelID>(id >= 0 ? id : BROADCAST_ID);
+        if (id < 0) {
+            s_->print(F("Should set servo id for "));
+            s_->print(cmd);
+            s_->print("\n");
+            return;
+        }
         switch (cmd) {
         case 0:
-            if (val >= 0) {
-                motors_->changeId(id1, static_cast<DynamixelID>(val));
-            }
-            else {
-                s_->print(motors_->getId(id1));
-                s_->print('\n');
-            }
+			val = val < 0? 1 : val;
+            motors_->changeId(static_cast<DynamixelID>(id), static_cast<DynamixelID>(val));
             break;
         case 1:
-            motors_->led(val > 0, id1);
+            motors_->led(val > 0, static_cast<DynamixelID>(id));
             break;
         case 2:
-            if (id >= 0 && val >= 0) {
-                auto res = motors_->read(static_cast<uint8_t>(val), static_cast<DynamixelID>(id));
-                s_->print(res);
-                s_->print('\n');
-            }
+            motors_->alarmShutdown(static_cast<DynamixelID>(id));            
             break;
         default:
             s_->print(F("Wrong command "));

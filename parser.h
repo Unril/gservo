@@ -247,6 +247,7 @@ public:
         while (pos_ < len_ && curr()) {
             if (!parseLine()) {
                 cb_->errorPos(curr(), pos_);
+				cb_->eol();
                 skipLine();
             }
         }
@@ -507,10 +508,11 @@ private:
 
     void skipLine()
     {
-        while (curr() && !check('\n')) {
+        while (curr() && !(check('\n') || check('\r'))) {
             next(false);
         }
-        consume('\n', false);
+        consume('\r', false);
+		consume('\n', false);
     }
 
     void skip()
@@ -542,6 +544,7 @@ private:
 
     bool requireEol()
     {
+		consume('\r');
         if (!consume('\n')) {
             cb_->error(F("expect end of line"));
             return false;

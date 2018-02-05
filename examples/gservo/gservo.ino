@@ -7,7 +7,7 @@ namespace gservo {
 Set defSettings()
 {
     return {
-            0.0f,                       // homing pull off, deg
+            0.0f,                       // homing pull off, deg            
             FVec{15000.0f, 15000.0f},   // speed, {x,y}, deg/min
             FVec{2000.0f, 2000.0f},     // acceleration, {x,y}, deg/sec^2
             FVec{0.0f, 0.0f},           // zero position, {x,y}, deg
@@ -15,7 +15,8 @@ Set defSettings()
             FVec::ofConst(0.0f),        // integral gain 
             FVec::ofConst(0.01f),       // derivative gain
             FVec::ofConst(0.0f),        // punch
-            FVec::ofConst(1.0f),        // torque
+            FVec::ofConst(1.0f),        // torque            
+            2,                          // direction invert mask
     };
 }
 }
@@ -41,7 +42,7 @@ void setup() {
 }
 
 void loop() {
-  if (Serial.available()) {
+  if (Serial.available() && !motors_.isMoving()) {
     char buff[128] {};
     const auto read = Serial.readBytesUntil('\n', buff, 127);
     buff[read] = '\n';
