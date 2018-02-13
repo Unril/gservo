@@ -533,7 +533,7 @@ private:
 
     char curr() const { return c_[pos_]; }
 
-    bool check(char c) const { return curr() == c; }
+    bool check(char c) const { return curr() == c || curr() == toupper(c); }
 
     bool consume(char c, bool skipAfter = true)
     {

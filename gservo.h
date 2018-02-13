@@ -470,20 +470,25 @@ public:
     void stopped()
     {
         if (report_) {
-            reportCurrentPos();
+            s_->print(F("[MSG:Pgm End]"));
             report_ = false;
         }
     }
 
     void eol() override
     {
+		if(anyError_) { 
+			anyError_ = false;
+			s_->print(F("\n"));
+			return;			
+		}
         if (auto s = motors_->status()) {
-            s_->print(F("Error: "));
+            s_->print(F("Error: Motors "));
             s_->print(s);
             s_->print(F("\n"));
-        } else {
-			s_->print(F("ok\n"));
-		}
+			return;
+        } 
+		s_->print(F("ok\n"));				
     }
 
     void homing() override { move(FVec::ofConst(set_.homingPullOff_), true); }
@@ -521,13 +526,13 @@ public:
 				mpos[i] = -mpos[i];
 			}
 		}
-        const auto pos = mpos - set_.zero_;
-        s_->print("MPos:");
+        const auto pos = mpos - set_.zero_;		
+        s_->print(F("<Idle|MPos:"));
         for (int i = 0; i < COORDS; ++i) {
             s_->print(pos[i]);
             s_->print(',');
         }
-        s_->print("0\n");
+        s_->print(F("0.000|FS:0,0|Pn:YZ|WCO:20.000,0.000,0.000>\n"));
     }
 
     void stop() override { motors_->stop(); }
@@ -576,6 +581,7 @@ public:
     {
         s_->print(msg);
         s_->print(F("; "));
+		anyError_ = true;
     }
 
     void errorPos(char c, int i) override
@@ -663,6 +669,7 @@ private:
     bool report_{};
     float speedOverride_{};
     bool fast_{};
+	bool anyError_{};
 };
 
 } // namespace gservo
