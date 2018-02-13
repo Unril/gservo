@@ -224,6 +224,8 @@ public:
 
     virtual void setSetting(unsigned s, float val, bool hasVal) = 0;
 
+    virtual void showSetting(unsigned s) = 0;
+	
     virtual void showSettings() = 0;
 
     virtual void servoId(unsigned command, int id, int val) = 0;
@@ -363,8 +365,8 @@ private:
             return false;
         }
         if (!consume('=')) {
-            cb_->error(F("expect ="));
-            return false;
+            cb_->showSetting(s);
+            return true;
         }
         float val{};
         bool hasVal = false;

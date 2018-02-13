@@ -30,23 +30,21 @@ gservo::CallbacksImpl cb_{&Serial, &motors_};
 gservo::Parser parser_{&cb_};
 
 void setup() {  
-  Serial.begin(serial_baudrate);  
-  Serial.print(F("Starting..."));
+  Serial.begin(serial_baudrate);    
   di_.begin(dynamixel_baudrate);
   motors_.changeBaud();
   di_.begin(serial_baudrate);
   motors_.led(true);
   cb_.begin();
-  Serial.print(F("\rStarted\n"));
   motors_.led(false);
 }
 
 void loop() {
-  if (Serial.available() && !motors_.isMoving()) {
-    char buff[128] {};
-    const auto read = Serial.readBytesUntil('\n', buff, 127);
-    buff[read] = '\n';
-    parser_.parse(buff, read);
-  }  
+  char buff[128] {};
+  if (Serial.available() && (Serial.peek() == '?' || !motors_.isMoving())) {    
+      const auto read = Serial.readBytesUntil('\n', buff, 127);
+      buff[read] = '\n';
+      parser_.parse(buff, read);
+  } 
   cb_.loop();
 }

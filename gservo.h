@@ -68,13 +68,15 @@ struct Reg {
         return NAN;
     }
 
-    void set(unsigned s, float val)
+    bool set(unsigned s, float val)
     {
         for (const auto& it : items) {
             if (it.snum == s) {
                 *it.f = val;
+				return true;
             }
         }
+		return false;
     }
 
     bool anyNan()
@@ -239,7 +241,27 @@ public:
         }
     }
 
-    void loop() { currPos_ = motorCurrentPos(); }
+	bool isEnabled(int coord = -1) {
+		s_ = DYN_STATUS_OK;
+		if(coord < 0) {
+			for (int i = 0; i < COORDS; ++i) {
+				uint8_t en{};
+				s_ |= motor_[i]->read(DYN_ADDRESS_ENABLE_TORQUE, en); 
+				if(!en){
+					return false;
+				}
+			}
+			return true;
+		}
+		uint8_t en{};
+		s_ |= motor_[coord]->read(DYN_ADDRESS_ENABLE_TORQUE, en); 
+		return en;
+	}
+	
+    void loop() { 
+		currPos_ = motorCurrentPos(); 
+		isMoving_ = motorIsMoving();
+	}
 
     void move(const FVec& goal, const FVec& speed)
     {
@@ -257,7 +279,9 @@ public:
         sendMoveToGoal();
     }
 
-    bool isMoving() const { return goalPos_ != currPos_; }
+    bool isMoving() const { 
+		return isMoving_; 
+	}
 
     FVec currentPos() { return convPos(motorCurrentPos()); }
 
@@ -371,6 +395,18 @@ private:
         return pos;
     }
 
+	bool motorIsMoving() {		
+		s_ = DYN_STATUS_OK;
+		for (int i = 0; i < COORDS; ++i) {
+			uint8_t mmoving{};
+            s_ |= motor_[i]->read(0X2E, mmoving);
+			if(mmoving) {
+				return true;
+			}
+        }
+		return false;
+	}
+	
     MVec motorCurrentSpeed()
     {
         MVec speed{};
@@ -402,6 +438,7 @@ private:
     MVec currPos_{};
     MVec goalPos_{};
     DynamixelStatus s_{DYN_STATUS_OK};
+	bool isMoving_{};
 };
 
 class CallbacksImpl final : public Callbacks {
@@ -444,7 +481,9 @@ public:
             s_->print(F("Error: "));
             s_->print(s);
             s_->print(F("\n"));
-        }
+        } else {
+			s_->print(F("ok\n"));
+		}
     }
 
     void homing() override { move(FVec::ofConst(set_.homingPullOff_), true); }
@@ -493,6 +532,21 @@ public:
 
     void stop() override { motors_->stop(); }
 
+	void showSetting(unsigned s) override {
+		if(s == 1) {
+			s_->print(motors_->isEnabled() ? 255 : 0);
+			s_->print(F("\n"));
+		} else { 
+			const auto val = Reg{&set_}.get(s);
+			if(isnan(val)) {				
+				s_->print(F("0\n"));
+			} else {
+				s_->print(val);
+				s_->print(F("\n"));
+			}
+		}
+	}
+	
     void setSetting(unsigned s, float val, bool hasVal) override
     {
         if (s == 1) {
@@ -507,13 +561,13 @@ public:
                 auto ds = defSettings();
                 val = Reg{&ds}.get(s);
             }
-            Reg{&set_}.set(s, val);
-            motors_->updateSettings(set_);
-            if (memcmp(&old, &set_, sizeof(Set)) != 0) {
-                EEPROM.put(0, set_);
-            }
+            if(Reg{&set_}.set(s, val)) { 
+				motors_->updateSettings(set_);
+				if (memcmp(&old, &set_, sizeof(Set)) != 0) {
+					EEPROM.put(0, set_);
+				}	
+			}            
         }
-        s_->print(F("Ok\n"));
     }
 
     void showSettings() override { Reg{&set_}.print(*s_); }
